@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+          integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+          crossorigin=""/>
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+            integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+            crossorigin=""></script>
+    <style>
+        #mapid {
+            height: 380px;
+            width: 80%;
+        }
+    </style>
+
+</head>
+<body>
+<div id="mapid"></div>
+<div>
+    <label>Upload csv File</label>
+    <input type="file" id="csvFile" accept="text/csv,.csv">
+</div>
+<script>
+    function handleFileSelect(evt) {
+        var files = evt.target.files; // FileList object
+        console.log(files)
+        // use the 1st file from the list
+        f = files[0];
+
+        var reader = new FileReader();
+
+        // Closure to capture the file information.
+        reader.onload = (function(theFile) {
+            return function(e) {
+
+                var coords = mapCoords(csvToArray(e.target.result));
+
+                // console.log(csvToArray(e.target.result))
+                roadCreate(coords);
+            };
+        })(f);
+
+        // Read in the image file as a data URL.
+        reader.readAsText(f);
+    }
+    function csvToArray(str, delimiter = ",") {
+        // slice from start of text to the first \n index
+        // use split to create an array from string by delimiter
+        const headers = str.slice(0, str.indexOf("\n")).split(delimiter);
+
+        // slice from \n index + 1 to the end of the text
+        // use split to create an array of each csv value row
+        const rows = str.slice(str.indexOf("\n") + 1).split("\n");
+
+        // Map the rows
+        // split values from each row into an array
+        // use headers.reduce to create an object
+        // object properties derived from headers:values
+        // the object passed as an element of the array
+        const arr = rows.map(function (row) {
+            const values = row.split(delimiter);
+            const el = headers.reduce(function (object, header, index) {
+                object[header] = values[index];
+                return object;
+            }, {});
+            return el;
+        });
+
+        // return the array
+        return arr;
+    }
+
+    function mapCoords(arr){
+        return arr.map(obj => {
+            return [Number(obj['Longitude Position ']),Number(obj['Latitude Position'])]
+
+        }).filter(obj => {
+            if(obj[0] == '' || obj[0] == null || obj[0] == undefined || obj[1] == '' || obj[1] == null || obj[1] == undefined) {
+                return false
+            }
+            return true
+        });
+    }
+    document.getElementById('csvFile').addEventListener('change', handleFileSelect, false);
+
+    var mymap = L.map('mapid', {
+        center: [3.02074, 101.6135233],
+        zoom: 10
+    });
+    L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibXVkYXNzaXIwMDciLCJhIjoiY2t0YnRhc2RoMDYyaDJ1dGQ5OXhwaGRnZiJ9.un_JFVQDQMQCtGiw6VC7zQ', {
+        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        maxZoom: 18,
+        id: 'mapbox/streets-v11',
+        tileSize: 512,
+        zoomOffset: -1,
+   }).addTo(mymap);
+
+    //icon
+    var myIcon = L.icon({
+        iconUrl: "./icon/marker-icon.png",
+        iconRetinaUrl: "./icon/marker-icon-2x.png",
+        shadowUrl: "./icon/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        tooltipAnchor: [16, -28],
+        shadowSize: [41, 41]
+    });
+
+    function pinPoint(latlng){
+        L.marker([latlng[1],latlng[0]], {icon: myIcon}).addTo(mymap);
+    }
+
+
+    //line
+    var myStyle = {
+        color: "#999",
+        opacity: 0.8,
+    };
+    function roadCreate(coords){
+        pinPoint(coords[0]);
+        pinPoint(coords[coords.length-1]);
+        var myLines = [{
+            "type": "LineString",
+            "coordinates":coords
+        }];
+
+        L.geoJSON(myLines, {
+            style: myStyle
+        }).addTo(mymap);
+
+        // var data = {
+        //     "type": "FeatureCollection",
+        //     "features": [{
+        //         "type": "Feature",
+        //         "geometry": {
+        //             "type": "LineString",
+        //             "coordinates":
+        //         },
+        //         "properties": {
+        //             "color": "red"
+        //         }
+        //     }, {
+        //         "type": "Feature",
+        //         "geometry": {
+        //             "type": "LineString",
+        //             "coordinates": [[0, -45],[0, 45]]
+        //         },
+        //         "properties": {
+        //             "color": "yellow"
+        //         }
+        //     }]
+        // };
+        //
+        // L.geoJson(data, {
+        //     onEachFeature: function (feature, layer) {
+        //         if (layer instanceof L.Polyline) {
+        //             layer.setStyle({
+        //                 'color': feature.properties.color
+        //             });
+        //         }
+        //     }
+        // }).addTo(mymap);;
+    }
+
+
+
+
+
+
+    //click event
+    var popup = L.popup();
+
+    function onMapClick(e) {
+        popup
+            .setLatLng(e.latlng)
+            .setContent("You clicked the map at " + e.latlng.toString())
+            .openOn(mymap);
+    }
+
+    mymap.on('click', onMapClick);
+
+</script>
+</body>
+</html>
