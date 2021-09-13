@@ -10,7 +10,14 @@
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
             integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
             crossorigin=""></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
     <style>
+
         #mapid {
             height: 380px;
             width: 80%;
@@ -20,9 +27,29 @@
 </head>
 <body>
 <div id="mapid"></div>
+
 <div>
-    <label>Upload csv File</label>
+    <br>
+    <label>Upload csv File to draw just lines</label>
     <input type="file" id="csvFile" accept="text/csv,.csv">
+    <br>
+    <br>
+    <div>
+        <label>Starting Coords</label>
+        <input type="number" id="startlat" placeholder="lat">
+        <input type="number" id="startlng" placeholder="lng">
+        <br>
+        <label>Ending Coords</label>
+        <input type="number" id="endlat" placeholder="lat">
+        <input type="number" id="endlng" placeholder="lng">
+        <br>
+        <button onclick="drawMap()">Draw Path</button>
+    </div>
+    <div>
+        <text id="error-message">
+
+        </text>
+    </div>
 </div>
 <script>
     function handleFileSelect(evt) {
@@ -39,7 +66,9 @@
                 var coords = mapCoords(csvToArray(e.target.result));
 
                 // console.log(csvToArray(e.target.result))
-                roadCreate(coords);
+                // lineCreate(coords);
+                console.log(coords);
+                drawMap(coords);
             };
         })(f);
 
@@ -75,7 +104,8 @@
 
     function mapCoords(arr){
         return arr.map(obj => {
-            return [Number(obj['Longitude Position ']),Number(obj['Latitude Position'])]
+            // return [Number(obj['Longitude Position ']),Number(obj['Latitude Position'])]
+            return [Number(obj['Latitude Position']),Number(obj['Longitude Position '])]
 
         }).filter(obj => {
             if(obj[0] == '' || obj[0] == null || obj[0] == undefined || obj[1] == '' || obj[1] == null || obj[1] == undefined) {
@@ -111,7 +141,7 @@
     });
 
     function pinPoint(latlng){
-        L.marker([latlng[1],latlng[0]], {icon: myIcon}).addTo(mymap);
+        L.marker([latlng[0],latlng[1]], {icon: myIcon}).addTo(mymap);
     }
 
 
@@ -120,7 +150,7 @@
         color: "#999",
         opacity: 0.8,
     };
-    function roadCreate(coords){
+    function lineCreate(coords){
         pinPoint(coords[0]);
         pinPoint(coords[coords.length-1]);
         var myLines = [{
@@ -131,6 +161,23 @@
         L.geoJSON(myLines, {
             style: myStyle
         }).addTo(mymap);
+
+    }
+    function drawMap(){
+        try {
+            var control = L.Routing.control({
+                waypoints: [
+                    L.latLng(document.getElementById('startlat').value,document.getElementById('startlng').value),
+                    L.latLng(document.getElementById('endlat').value,document.getElementById('endlng').value),
+                ],
+                routeWhileDragging: false
+            }).addTo(mymap);
+            document.getElementById('error-message').textContent="";
+        } catch (e) {
+            alert('You have entered the wrong coords or see the error message');
+            document.getElementById('error-message').textContent="Error Message Says: "+e;
+        }
+
 
     }
 
@@ -150,7 +197,7 @@
     }
 
     mymap.on('click', onMapClick);
-
 </script>
 </body>
 </html>
+
